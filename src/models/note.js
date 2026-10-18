@@ -10,13 +10,13 @@ const noteSchema = new Schema(
     },
     content: {
       type: String,
-      required: false, // або просто прибрати required: true
+      required: false,
       default: '',
       trim: true,
     },
     tag: {
       type: String,
-      required: false, // робимо опційним
+      required: false,
       enum: TAGS,
       default: 'Todo',
     },
