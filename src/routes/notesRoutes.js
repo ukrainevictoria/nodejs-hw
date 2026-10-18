@@ -1,18 +1,27 @@
 import { Router } from 'express';
 import {
-  getAllNotes,
-  getNoteById,
-  createNote,
-  deleteNote,
-  updateNote,
+  getAllNotesSchema,
+  noteIdSchema,
+  createNoteSchema,
+  updateNoteSchema,
+} from '../validations/notesValidation.js';
+import {
+  getNotesController,
+  getNoteByIdController,
+  createNoteController,
+  patchNoteController,
+  deleteNoteController,
 } from '../controllers/notesController.js';
 
+// 1. Створюємо роутер
 const router = Router();
 
-router.get('/notes', getAllNotes);
-router.get('/notes/:noteId', getNoteById);
-router.post('/notes', createNote);
-router.delete('/notes/:noteId', deleteNote);
-router.patch('/notes/:noteId', updateNote);
+// 2. Прописуємо маршрути із валідацією
+router.get('/notes', getAllNotesSchema, getNotesController);
+router.get('/notes/:noteId', noteIdSchema, getNoteByIdController);
+router.post('/notes', createNoteSchema, createNoteController);
+router.patch('/notes/:noteId', updateNoteSchema, patchNoteController);
+router.delete('/notes/:noteId', noteIdSchema, deleteNoteController);
 
+// 3. Експортуємо роутер в самому кінці файлу
 export default router;

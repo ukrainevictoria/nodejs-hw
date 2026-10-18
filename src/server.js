@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { errors } from 'celebrate';
 
 import { connectMongoDB } from './db/connectMongoDB.js';
 import { logger } from './middleware/logger.js';
@@ -26,11 +27,14 @@ export const setupServer = async () => {
   // 3. Маршрути нотаток
   app.use(notesRouter);
 
-  // 4. Обробка неіснуючих маршрутів
+  // 4. Обробка неіснуючих маршрутів (404)
   app.use(notFoundHandler);
 
-  // 5. Глобальна обробка помилок
-  app.use(errorHandler);
+  // 5. ОБОВ'ЯЗКОВО: Обробник помилок валідації від celebrate (після роутів!)
+  app.use(errors());
+
+  // 6. Глобальна обробка помилок (500 або кастомні)
+  app.use(errorHandler); // Або ваш власний обробник помилок, якщо він використовується
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
