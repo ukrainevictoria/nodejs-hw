@@ -6,16 +6,18 @@ const noteSchema = new Schema(
     title: {
       type: String,
       required: true,
+      trim: true,
     },
     content: {
       type: String,
-      default: '',
+      required: true,
+      trim: true,
     },
     tag: {
       type: String,
+      required: true,
       enum: TAGS,
       default: 'Todo',
-      index: true, // Додано індекс за вимогою
     },
   },
   {
@@ -23,5 +25,7 @@ const noteSchema = new Schema(
     versionKey: false,
   },
 );
+
+noteSchema.index({ tag: 1 });
 
 export const Note = model('Note', noteSchema);
