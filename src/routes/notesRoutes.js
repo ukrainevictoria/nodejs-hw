@@ -1,27 +1,32 @@
 import { Router } from 'express';
 import {
-  getAllNotesSchema,
-  noteIdSchema,
+  getAllNotes,
+  getNoteById,
+  createNote,
+  updateNote,
+  deleteNote,
+} from '../controllers/notesController.js';
+import {
+  validateBody,
+  validateQuery,
+  isValidId,
+} from '../middlewares/validation.js';
+import {
   createNoteSchema,
   updateNoteSchema,
+  getAllNotesSchema,
 } from '../validations/notesValidation.js';
-import {
-  getNotesController,
-  getNoteByIdController,
-  createNoteController,
-  patchNoteController,
-  deleteNoteController,
-} from '../controllers/notesController.js';
 
-// 1. Створюємо роутер
 const router = Router();
 
-// 2. Прописуємо маршрути із валідацією
-router.get('/notes', getAllNotesSchema, getNotesController);
-router.get('/notes/:noteId', noteIdSchema, getNoteByIdController);
-router.post('/notes', createNoteSchema, createNoteController);
-router.patch('/notes/:noteId', updateNoteSchema, patchNoteController);
-router.delete('/notes/:noteId', noteIdSchema, deleteNoteController);
+router.get('/', validateQuery(getAllNotesSchema), getAllNotes);
 
-// 3. Експортуємо роутер в самому кінці файлу
+router.get('/:noteId', isValidId, getNoteById);
+
+router.post('/', validateBody(createNoteSchema), createNote);
+
+router.patch('/:noteId', isValidId, validateBody(updateNoteSchema), updateNote);
+
+router.delete('/:noteId', isValidId, deleteNote);
+
 export default router;
