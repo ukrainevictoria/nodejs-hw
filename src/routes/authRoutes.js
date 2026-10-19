@@ -1,33 +1,33 @@
 import { Router } from 'express';
-import { celebrate, Segments } from 'celebrate';
+import { celebrate } from 'celebrate';
 import {
-  registerUser,
-  loginUser,
-  refreshUserSession,
-  logoutUser,
+  registerUserController,
+  loginUserController,
+  refreshUserSessionController,
+  logoutUserController,
 } from '../controllers/authController.js';
-import { registerSchema, loginSchema } from '../validations/authValidation.js';
+import {
+  registerUserSchema,
+  loginUserSchema,
+} from '../validations/authValidation.js';
+import { ctrlWrapper } from '../utils/ctrlWrapper.js';
 
 const router = Router();
 
 router.post(
-  '/register',
-  celebrate({
-    [Segments.BODY]: registerSchema,
-  }),
-  registerUser,
+  '/auth/register',
+  celebrate(registerUserSchema),
+  ctrlWrapper(registerUserController),
 );
 
 router.post(
-  '/login',
-  celebrate({
-    [Segments.BODY]: loginSchema,
-  }),
-  loginUser,
+  '/auth/login',
+  celebrate(loginUserSchema),
+  ctrlWrapper(loginUserController),
 );
 
-router.post('/refresh', refreshUserSession);
+router.post('/auth/refresh', ctrlWrapper(refreshUserSessionController));
 
-router.post('/logout', logoutUser);
+router.post('/auth/logout', ctrlWrapper(logoutUserController));
 
 export default router;
