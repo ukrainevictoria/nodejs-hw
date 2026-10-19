@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 
 const userSchema = new Schema(
   {
-    name: { type: String, required: true },
+    username: { type: String, required: false },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
   },
@@ -12,10 +12,17 @@ const userSchema = new Schema(
   },
 );
 
+userSchema.pre('save', function (next) {
+  if (!this.username) {
+    this.username = this.email;
+  }
+  next();
+});
+
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   return obj;
 };
 
-export const User = model('User', userSchema);
+export const User = model('users', userSchema);

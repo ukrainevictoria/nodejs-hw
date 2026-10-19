@@ -3,25 +3,16 @@ import { Session } from '../models/session.js';
 import { User } from '../models/user.js';
 
 export const authenticate = async (req, res, next) => {
-  const authHeader = req.get('Authorization');
+  const { sessionId, accessToken } = req.cookies;
 
-  let accessToken = req.cookies.accessToken;
-  let sessionId = req.cookies.sessionId;
-
-  if (authHeader) {
-    const [bearer, token] = authHeader.split(' ');
-    if (bearer === 'Bearer' && token) {
-      accessToken = token;
-    }
+  if (!sessionId || !accessToken) {
+    return next(createHttpError(401, 'Session not found'));
   }
 
-  if (!accessToken && !sessionId) {
-    return next(
-      createHttpError(401, 'Provide authorization token and session id'),
-    );
-  }
-
-  const session = await Session.findOne({ _id: sessionId, accessToken });
+  const session = await Session.findOne({
+    _id: sessionId,
+    accessToken,
+  });
 
   if (!session) {
     return next(createHttpError(401, 'Session not found'));
@@ -41,7 +32,6 @@ export const authenticate = async (req, res, next) => {
   }
 
   req.user = user;
-  req.session = session;
 
   next();
 };

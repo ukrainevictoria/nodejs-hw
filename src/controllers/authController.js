@@ -1,60 +1,69 @@
 import {
-  registerUser,
-  loginUser,
+  registerUser as registerUserService,
+  loginUser as loginUserService,
+  logoutUser as logoutUserService,
   refreshUsersSession,
-  logoutUser,
-  setupSessionCookies,
+  setSessionCookies,
 } from '../services/auth.js';
+import { User } from '../models/user.js';
 
-export const registerUserController = async (req, res) => {
-  const user = await registerUser(req.body);
+export const registerUser = async (req, res) => {
+  const user = await registerUserService(req.body);
+  const session = await loginUserService(req.body);
+
+  setSessionCookies(res, session);
 
   res.status(201).json({
     status: 201,
     message: 'Successfully registered a user!',
-    data: user,
-  });
-};
-
-export const loginUserController = async (req, res) => {
-  const session = await loginUser(req.body);
-
-  setupSessionCookies(res, session);
-
-  res.status(200).json({
-    status: 200,
-    message: 'Successfully logged in an auth user!',
     data: {
+      user,
       accessToken: session.accessToken,
     },
   });
 };
 
-export const refreshUserSessionController = async (req, res) => {
+export const loginUser = async (req, res) => {
+  const session = await loginUserService(req.body);
+  const user = await User.findById(session.userId);
+
+  setSessionCookies(res, session);
+
+  res.json({
+    status: 200,
+    message: 'Successfully logged in an user!',
+    data: {
+      user,
+      accessToken: session.accessToken,
+    },
+  });
+};
+
+export const logoutUser = async (req, res) => {
+  if (req.cookies.sessionId) {
+    await logoutUserService(req.cookies.sessionId);
+  }
+
+  res.clearCookie('sessionId');
+  res.clearCookie('refreshToken');
+  res.clearCookie('accessToken');
+
+  res.status(204).send();
+};
+
+export const refreshUserSession = async (req, res) => {
   const session = await refreshUsersSession({
     sessionId: req.cookies.sessionId,
     refreshToken: req.cookies.refreshToken,
   });
 
-  setupSessionCookies(res, session);
+  setSessionCookies(res, session);
 
-  res.status(200).json({
+  res.json({
     status: 200,
     message: 'Successfully refreshed a session!',
     data: {
       accessToken: session.accessToken,
     },
   });
-};
-
-export const logoutUserController = async (req, res) => {
-  if (req.cookies.sessionId) {
-    await logoutUser(req.cookies.sessionId);
-  }
-
-  res.clearCookie('sessionId');
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
-
-  res.status(204).send();
 };
