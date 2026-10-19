@@ -1,69 +1,93 @@
-import {
-  registerUser as registerUserService,
-  loginUser as loginUserService,
-  logoutUser as logoutUserService,
-  refreshUsersSession,
-  setSessionCookies,
-} from '../services/auth.js';
+import bcrypt from 'bcrypt';
+import createHttpError from 'http-errors';
 import { User } from '../models/user.js';
+import { Session } from '../models/session.js';
+import {
+  createSession,
+  setSessionCookies,
+  refreshUsersSession,
+} from '../services/auth.js';
 
-export const registerUser = async (req, res) => {
-  const user = await registerUserService(req.body);
-  const session = await loginUserService(req.body);
+export const registerUser = async (req, res, next) => {
+  try {
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) {
+      throw createHttpError(409, 'Email in use');
+    }
 
-  setSessionCookies(res, session);
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    const user = await User.create({
+      ...req.body,
+      password: hashedPassword,
+    });
 
-  res.status(201).json({
-    status: 201,
-    message: 'Successfully registered a user!',
-    data: {
-      user,
-      accessToken: session.accessToken,
-    },
-  });
-};
+    const session = await createSession(user._id);
+    setSessionCookies(res, session);
 
-export const loginUser = async (req, res) => {
-  const session = await loginUserService(req.body);
-  const user = await User.findById(session.userId);
-
-  setSessionCookies(res, session);
-
-  res.json({
-    status: 200,
-    message: 'Successfully logged in an user!',
-    data: {
-      user,
-      accessToken: session.accessToken,
-    },
-  });
-};
-
-export const logoutUser = async (req, res) => {
-  if (req.cookies.sessionId) {
-    await logoutUserService(req.cookies.sessionId);
+    res.status(201).json(user);
+  } catch (error) {
+    next(error);
   }
-
-  res.clearCookie('sessionId');
-  res.clearCookie('refreshToken');
-  res.clearCookie('accessToken');
-
-  res.status(204).send();
 };
 
-export const refreshUserSession = async (req, res) => {
-  const session = await refreshUsersSession({
-    sessionId: req.cookies.sessionId,
-    refreshToken: req.cookies.refreshToken,
-  });
+export const loginUser = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      throw createHttpError(404, 'User not found');
+    }
 
-  setSessionCookies(res, session);
+    const isPasswordValid = await bcrypt.compare(
+      req.body.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw createHttpError(401, 'Unauthorized');
+    }
 
-  res.json({
-    status: 200,
-    message: 'Successfully refreshed a session!',
-    data: {
-      accessToken: session.accessToken,
-    },
-  });
+    await Session.deleteOne({ userId: user._id });
+    const session = await createSession(user._id);
+    setSessionCookies(res, session);
+
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logoutUser = async (req, res, next) => {
+  try {
+    if (req.cookies.sessionId) {
+      await Session.deleteOne({ _id: req.cookies.sessionId });
+    }
+
+    res.clearCookie('sessionId');
+    res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refreshUserSession = async (req, res, next) => {
+  try {
+    const session = await refreshUsersSession({
+      sessionId: req.cookies.sessionId,
+      refreshToken: req.cookies.refreshToken,
+    });
+
+    setSessionCookies(res, session);
+
+    res.status(200).json({
+      status: 200,
+      message: 'Successfully refreshed a session!',
+      data: {
+        accessToken: session.accessToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };

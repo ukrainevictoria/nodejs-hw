@@ -32,32 +32,24 @@ export const loginUser = async (payload) => {
 
   await Session.deleteOne({ userId: user._id });
 
-  const accessToken = crypto.randomBytes(30).toString('base64');
-  const refreshToken = crypto.randomBytes(30).toString('base64');
-
-  return await Session.create({
-    userId: user._id,
-    accessToken,
-    refreshToken,
-    accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
-    refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
-  });
+  return await createSession(user._id);
 };
 
 export const logoutUser = async (sessionId) => {
   await Session.deleteOne({ _id: sessionId });
 };
 
-const createSession = () => {
+export const createSession = async (userId) => {
   const accessToken = crypto.randomBytes(30).toString('base64');
   const refreshToken = crypto.randomBytes(30).toString('base64');
 
-  return {
+  return await Session.create({
+    userId,
     accessToken,
     refreshToken,
     accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
-  };
+  });
 };
 
 export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
@@ -79,18 +71,12 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
 
   await Session.deleteOne({ _id: sessionId });
 
-  const newSession = createSession();
-
-  return await Session.create({
-    userId: session.userId,
-    ...newSession,
-  });
+  return await createSession(session.userId);
 };
 
 export const setSessionCookies = (res, session) => {
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
-    expires: new Date(Date.now() + ONE_DAY),
     maxAge: ONE_DAY,
     secure: true,
     sameSite: 'none',
@@ -98,7 +84,6 @@ export const setSessionCookies = (res, session) => {
 
   res.cookie('sessionId', session._id, {
     httpOnly: true,
-    expires: new Date(Date.now() + ONE_DAY),
     maxAge: ONE_DAY,
     secure: true,
     sameSite: 'none',
@@ -106,7 +91,6 @@ export const setSessionCookies = (res, session) => {
 
   res.cookie('accessToken', session.accessToken, {
     httpOnly: true,
-    expires: new Date(Date.now() + FIFTEEN_MINUTES),
     maxAge: FIFTEEN_MINUTES,
     secure: true,
     sameSite: 'none',

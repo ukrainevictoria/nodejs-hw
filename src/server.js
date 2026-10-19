@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
-import pino from 'pino-http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { errors } from 'celebrate';
 
 import initMongoDB from './db/connectMongoDB.js';
+import { logger } from './middleware/logger.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -20,23 +20,15 @@ export const setupServer = () => {
   app.use(express.json());
   app.use(cors());
   app.use(cookieParser());
+  app.use(logger);
 
-  app.use(
-    pino({
-      transport: {
-        target: 'pino-pretty',
-      },
-    }),
-  );
-
-  // Маршрути (без префіксів для auth, якщо так вимагається, або стандартно)
-  app.use('/auth', authRoutes);
-  app.use('/notes', notesRoutes);
+  // Реєстрація роутів без зайвих префіксів
+  app.use(authRoutes);
+  app.use(notesRoutes);
 
   // Обробники помилок
   app.use(notFoundHandler);
-
-  app.use(errors()); // Celebrate error handler
+  app.use(errors());
   app.use(errorHandler);
 
   app.listen(PORT, () => {
