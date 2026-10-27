@@ -1,24 +1,26 @@
-import { model, Schema } from 'mongoose';
+import { Schema, model } from 'mongoose';
 
-const userSchema = new Schema(
+const usersSchema = new Schema(
   {
-    username: { type: String, required: true },
+    username: { type: String, required: false },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    avatar: {
-      type: String,
-      default: 'https://ac.goit.global/fullstack/react/default-avatar.jpg',
-    },
+    avatar: { type: String, default: null },
   },
   { timestamps: true, versionKey: false },
 );
 
-// Автоматичне встановлення username таким самим, як email, якщо він не заданий
-userSchema.pre('save', function (next) {
-  if (!this.username) {
+usersSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+usersSchema.pre('save', function (next) {
+  if (!this.username && this.email) {
     this.username = this.email;
   }
   next();
 });
 
-export const User = model('users', userSchema);
+export const User = model('users', usersSchema);
