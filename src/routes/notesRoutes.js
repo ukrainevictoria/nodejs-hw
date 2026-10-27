@@ -20,19 +20,35 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', celebrate(getAllNotesSchema), ctrlWrapper(getAllNotes));
+router.get(
+  '/',
+  celebrate({ query: getAllNotesSchema }),
+  ctrlWrapper(getAllNotes),
+);
 
-router.get('/:noteId', celebrate(noteIdSchema), ctrlWrapper(getNoteById));
+router.get(
+  '/:noteId',
+  celebrate({ params: noteIdSchema }),
+  ctrlWrapper(getNoteById),
+);
 
-router.post('/', celebrate(createNoteSchema), ctrlWrapper(createNote));
+router.post(
+  '/',
+  celebrate({ body: createNoteSchema }),
+  ctrlWrapper(createNote),
+);
 
 router.patch(
   '/:noteId',
-  celebrate(noteIdSchema),
-  celebrate(updateNoteSchema),
+  celebrate({ params: noteIdSchema }),
+  celebrate({ body: updateNoteSchema }),
   ctrlWrapper(updateNote),
 );
 
-router.delete('/:noteId', celebrate(noteIdSchema), ctrlWrapper(deleteNote));
+router.delete(
+  '/:noteId',
+  celebrate({ params: noteIdSchema }),
+  ctrlWrapper(deleteNote),
+);
 
 export default router;
