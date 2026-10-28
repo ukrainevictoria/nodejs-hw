@@ -2,7 +2,7 @@ import createHttpError from 'http-errors';
 import { User } from '../models/user.js';
 import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 
-export const updateAvatarController = async (req, res) => {
+export const updateUserAvatar = async (req, res) => {
   if (!req.file) {
     throw createHttpError(400, 'Avatar file is required');
   }
@@ -19,9 +19,11 @@ export const updateAvatarController = async (req, res) => {
     throw createHttpError(404, 'User not found');
   }
 
-  res.json({
+  res.status(200).json({
     status: 200,
     message: 'Successfully updated avatar!',
-    data: updatedUser,
+    data: {
+      url: updatedUser.avatar,
+    },
   });
 };

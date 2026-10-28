@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 import { upload } from '../middleware/multer.js';
-import { ctrlWrapper } from '../utils/ctrlWrapper.js';
-import { updateAvatarController } from '../controllers/userController.js'; // 👈 Змініть тут
+import { updateUserAvatar } from '../controllers/userController.js';
 
 const router = Router();
 
@@ -10,7 +9,7 @@ router.patch(
   '/me/avatar',
   authenticate,
   upload.single('avatar'),
-  ctrlWrapper(updateAvatarController),
+  updateUserAvatar,
 );
 
 export default router;

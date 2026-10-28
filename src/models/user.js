@@ -5,7 +5,11 @@ const usersSchema = new Schema(
     username: { type: String, required: false },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    avatar: { type: String, default: null },
+    avatar: {
+      type: String,
+      default:
+        'https://res.cloudinary.com/placeholder/image/upload/v1/default-avatar.png',
+    },
   },
   { timestamps: true, versionKey: false },
 );

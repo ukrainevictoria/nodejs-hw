@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import createHttpError from 'http-errors';
 import handlebars from 'handlebars';
@@ -8,24 +7,13 @@ import fs from 'fs/promises';
 import { User } from '../models/user.js';
 import { Session } from '../models/session.js';
 import { sendEmail } from '../utils/sendMail.js';
-
-const setupSession = (res, session) => {
-  res.cookie('refreshToken', session.refreshToken, {
-    httpOnly: true,
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-
-  res.cookie('sessionId', session._id, {
-    httpOnly: true,
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-};
+import { createSession, setSessionCookies } from '../services/auth.js';
 
 export const registerUser = async (req, res) => {
   const { email, password } = req.body;
   const userExists = await User.findOne({ email });
   if (userExists) {
-    throw createHttpError(409, 'Email in use');
+    throw createHttpError(400, 'Email in use');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -34,6 +22,9 @@ export const registerUser = async (req, res) => {
     ...req.body,
     password: hashedPassword,
   });
+
+  const session = await createSession(newUser._id);
+  setSessionCookies(res, session);
 
   res.status(201).json({
     status: 201,
@@ -46,7 +37,7 @@ export const loginUser = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
-    throw createHttpError(404, 'User not found');
+    throw createHttpError(401, 'Unauthorized');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -56,18 +47,8 @@ export const loginUser = async (req, res) => {
 
   await Session.deleteOne({ userId: user._id });
 
-  const accessToken = crypto.randomBytes(30).toString('base64');
-  const refreshToken = crypto.randomBytes(30).toString('base64');
-
-  const session = await Session.create({
-    userId: user._id,
-    accessToken,
-    refreshToken,
-    accessTokenValidUntil: new Date(Date.now() + 15 * 60 * 1000),
-    refreshTokenValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-
-  setupSession(res, session);
+  const session = await createSession(user._id);
+  setSessionCookies(res, session);
 
   res.json({
     status: 200,
@@ -85,6 +66,7 @@ export const logoutUser = async (req, res) => {
 
   res.clearCookie('sessionId');
   res.clearCookie('refreshToken');
+  res.clearCookie('accessToken');
 
   res.status(204).send();
 };
@@ -95,28 +77,20 @@ export const refreshUserSession = async (req, res) => {
     refreshToken: req.cookies.refreshToken,
   });
 
-  if (!session) {
-    throw createHttpError(401, 'Session not found');
-  }
-
-  if (new Date() > new Date(session.refreshTokenValidUntil)) {
-    throw createHttpError(401, 'Session token expired');
+  if (!session || new Date() > new Date(session.refreshTokenValidUntil)) {
+    if (session) {
+      await Session.deleteOne({ _id: session._id });
+    }
+    res.clearCookie('sessionId');
+    res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
+    throw createHttpError(401, 'Session token expired or invalid');
   }
 
   await Session.deleteOne({ _id: session._id });
 
-  const accessToken = crypto.randomBytes(30).toString('base64');
-  const refreshToken = crypto.randomBytes(30).toString('base64');
-
-  const newSession = await Session.create({
-    userId: session.userId,
-    accessToken,
-    refreshToken,
-    accessTokenValidUntil: new Date(Date.now() + 15 * 60 * 1000),
-    refreshTokenValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-
-  setupSession(res, newSession);
+  const newSession = await createSession(session.userId);
+  setSessionCookies(res, newSession);
 
   res.json({
     status: 200,
@@ -130,8 +104,14 @@ export const refreshUserSession = async (req, res) => {
 export const requestResetEmail = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
+
+  // З міркувань безпеки не видаємо 404, якщо користувача не знайдено
   if (!user) {
-    throw createHttpError(404, 'User not found!');
+    return res.json({
+      status: 200,
+      message: 'Reset password email has been successfully sent.',
+      data: {},
+    });
   }
 
   const resetToken = jwt.sign(
@@ -176,7 +156,7 @@ export const resetPassword = async (req, res) => {
   try {
     entries = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    throw createHttpError(403, 'Token is expired or invalid.');
+    throw createHttpError(401, 'Token is expired or invalid.');
   }
 
   const user = await User.findOne({
@@ -185,7 +165,7 @@ export const resetPassword = async (req, res) => {
   });
 
   if (!user) {
-    throw createHttpError(404, 'User not found!');
+    throw createHttpError(401, 'User not found!');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
