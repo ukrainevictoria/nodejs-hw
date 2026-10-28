@@ -55,6 +55,7 @@ export const loginUser = async (req, res) => {
     message: 'Successfully logged in an user!',
     data: {
       accessToken: session.accessToken,
+      user,
     },
   });
 };
@@ -105,7 +106,6 @@ export const requestResetEmail = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
 
-  // З міркувань безпеки не видаємо 404, якщо користувача не знайдено
   if (!user) {
     return res.json({
       status: 200,
@@ -165,7 +165,7 @@ export const resetPassword = async (req, res) => {
   });
 
   if (!user) {
-    throw createHttpError(401, 'User not found!');
+    throw createHttpError(404, 'User not found!');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
